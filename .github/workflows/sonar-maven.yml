@@ -1,0 +1,109 @@
+name: Sonar Maven Analysis
+
+on:
+  workflow_call:
+    inputs:
+      java_version:
+        description: Build Java version
+        type: string
+        default: "21"
+      project_key:
+        description: Target project key in SonarCloud
+        type: string
+        default: ${{ vars.SONAR_PROJECT_KEY }}
+      pull_request:
+        description: Assiciated pull request event
+        type: string
+      save_cache:
+        description: Whether to persist analysis caches
+        type: boolean
+        default: false
+    secrets:
+      SONAR_TOKEN:
+        description: SonarCloud analysis API token
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    name: Prepare parameters
+    outputs:
+      sonar_args: ${{ steps.params.outputs.sonar_args }}
+      check_ref: ${{ steps.params.outputs.check_ref }}
+      runner_platform: ${{ steps.params.outputs.runner_platform }}
+    steps:
+      - name: Prepare parameters
+        id: params
+        shell: bash
+        env:
+          PULL_REQUEST_EVENT: ${{ inputs.pull_request }}
+          RUNNER_PLATFORM: ${{ runner.os }}-${{ runner.arch }}
+        run: |
+          SONAR_ARGS="-Dsonar.projectKey=${{ inputs.project_key }}"
+          if [[ $PULL_REQUEST_EVENT ]]; then
+            SONAR_ARGS="$SONAR_ARGS $(echo $PULL_REQUEST_EVENT | jq -r '[
+              "-Dsonar.pullrequest.key=\(.number)",
+              "-Dsonar.pullrequest.branch=\(.head.ref)",
+              "-Dsonar.pullrequest.base=\(.base.ref)",
+              "-Dsonar.pullrequest.github.repository=\(.repo.name)",
+              "-Dsonar.pullrequest.provider=GitHub"
+            ] | join(" ")')"
+          fi
+          echo "sonar_args=$SONAR_ARGS" >> $GITHUB_OUTPUT
+
+          CHECK_REF=main
+          if [[ $PULL_REQUEST_EVENT ]]; then
+            echo CHECK_REF=$(echo "$PULL_REQUEST_EVENT" | jq -r .head.sha)
+          fi
+          echo "check_ref=$CHECK_REF" >> "$GITHUB_OUTPUT"
+
+          echo "runner_platform=$RUNNER_PLATFORM" >> "$GITHUB_OUTPUT"
+  analyse:
+    runs-on: ubuntu-latest
+    name: Perform analysis
+    needs: prepare
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.check_ref }}
+          fetch-depth: 0
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "${{ inputs.java_version }}"
+      - name: Restore Maven cache
+        id: restore-maven-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.m2
+          key: sonar-${{ needs.prepare.outputs.runner_platform }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: sonar-${{ needs.prepare.outputs.runner_platform }}-maven-
+      - name: Restore Sonar cache
+        id: restore-sonar-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.sonar/cache
+          key: sonar-${{ needs.prepare.outputs.runner_platform }}-sonar-
+      - name: Run Sonar analysis
+        env:
+          SONAR_ARGS: ${{ needs.prepare.outputs.sonar_args }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          mvn $SONAR_ARGS -P metrics verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+      - name: Save Maven cache
+        if: inputs.save_cache && !steps.restore-maven-cache.outputs.cache-hit
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.m2
+          key: ${{ steps.restore-maven-cache.outputs.cache-primary-key }}
+      - name: Save Sonar cache
+        if: inputs.save_cache && !steps.restore-sonar-cache.outputs.cache-hit
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ steps.restore-sonar-cache.outputs.cache-primary-key }}

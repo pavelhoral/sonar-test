@@ -1,0 +1,12 @@
+# Maven
+target
+
+# VSCode
+.vscode
+
+# Eclipse
+.settings
+.project
+
+# Sonar
+.scannerwork
