@@ -1,8 +1,7 @@
-name: Build Project
+name: Build project
 
 on:
-  push:
-  pull_request:
+  workflow_call:
 
 permissions:
   contents: read
@@ -25,11 +24,3 @@ jobs:
           cache: "maven"
       - name: Verify build
         run: mvn verify
-  sonar:
-    name: Sonar analysis
-    needs: build
-    if: github.event_name == 'push' && github.ref_name == 'main'
-    uses: ./.github/workflows/sonar-maven.yml
-    with:
-      save_cache: true
-    secrets: inherit

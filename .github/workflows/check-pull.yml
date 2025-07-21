@@ -1,0 +1,27 @@
+name: Check pull
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-project.yml
+  sonar:
+    runs-on: ubuntu-latest
+    needs: build
+    name: Prepare analysis context
+    steps:
+      - name: Persist event payload
+        if: github.event_name == 'pull_request'
+        env:
+          EVENT_PAYLOAD: ${{ toJson(github.event.pull_request) }}
+        run: echo $EVENT_PAYLOAD > pull_request.json
+      - name: Upload event payload
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pull_request
+          path: pull_request.json

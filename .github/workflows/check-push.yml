@@ -1,0 +1,18 @@
+name: Check push
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-project.yml
+  sonar:
+    needs: build
+    if: github.ref_name == 'main'
+    uses: ./.github/workflows/sonar-maven.yml
+    with:
+      save_cache: true
+    secrets: inherit

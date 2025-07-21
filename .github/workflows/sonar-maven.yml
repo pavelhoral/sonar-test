@@ -1,4 +1,4 @@
-name: Sonar Maven Analysis
+name: Sonar Maven analysis
 
 on:
   workflow_call:
@@ -61,7 +61,7 @@ jobs:
           echo "check_ref=$CHECK_REF" >> "$GITHUB_OUTPUT"
 
           echo "runner_platform=$RUNNER_PLATFORM" >> "$GITHUB_OUTPUT"
-  analyse:
+  analyze:
     runs-on: ubuntu-latest
     name: Perform analysis
     needs: prepare

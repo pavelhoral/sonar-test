@@ -1,15 +1,43 @@
-name: Analyse Pull Request
+name: Trigger Sonar analysis
 
 on:
-  pull_request_target:
+  workflow_run:
+    workflows:
+      - Check pull
+    types:
+      - completed
 
 permissions:
   contents: read
 
 jobs:
-  analyse:
+  prepare:
+    runs-on: ubuntu-latest
+    name: Prepare context
+    if: github.event.workflow_run.conclusion == 'success'
+    outputs:
+      pull_request: ${{ steps.export.outputs.pull_request }}
+    steps:
+      - name: Fetch pull_request
+        if: github.event.workflow_run.event == 'pull_request'
+        uses: actions/download-artifact@v4
+        with:
+          name: pull_request
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Export context values
+        id: export
+        shell: bash
+        run: |
+          if [ -f pull_request.json ]; then
+            echo "pull_request=$(cat pull_request.json | jq -c .)" >> "$GITHUB_OUTPUT"
+          fi
+  analyze:
     name: Sonar analysis
+    needs: prepare
+    if: needs.prepare.outputs.pull_request
     uses: ./.github/workflows/sonar-maven.yml
     with:
-      pull_request: ${{ toJSON(github.event.pull_request) }}
-    secrets: inherit
+      pull_request: ${{ needs.prepare.outputs.pull_request }}
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
