@@ -81,14 +81,14 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ~/.m2
-          key: sonar-${{ needs.prepare.outputs.runner_platform }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: sonar-${{ needs.prepare.outputs.runner_platform }}-maven-
+          key: sonar-maven-${{ needs.prepare.outputs.runner_platform }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: sonar-maven-${{ needs.prepare.outputs.runner_platform }}-
       - name: Restore Sonar cache
         id: restore-sonar-cache
         uses: actions/cache/restore@v4
         with:
           path: ~/.sonar/cache
-          key: sonar-${{ needs.prepare.outputs.runner_platform }}-sonar-
+          key: sonar-cache-${{ needs.prepare.outputs.runner_platform }}
       - name: Run Sonar analysis
         env:
           SONAR_ARGS: ${{ needs.prepare.outputs.sonar_args }}

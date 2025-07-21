@@ -8,9 +8,11 @@ permissions:
 
 jobs:
   build:
+    name: Build project
     uses: ./.github/workflows/build-project.yml
   sonar:
     needs: build
+    name: Sonar analysis
     if: github.ref_name == 'main'
     uses: ./.github/workflows/sonar-maven.yml
     with:
