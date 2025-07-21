@@ -33,7 +33,7 @@ jobs:
     outputs:
       sonar_args: ${{ steps.params.outputs.sonar_args }}
       check_ref: ${{ steps.params.outputs.check_ref }}
-      runner_platform: ${{ steps.params.outputs.runner_platform }}
+      runner_platform: ${{ steps.platform.outputs.result }}
     steps:
       - name: Prepare parameters
         id: params
@@ -61,6 +61,13 @@ jobs:
           echo "check_ref=$CHECK_REF" >> "$GITHUB_OUTPUT"
 
           echo "runner_platform=$RUNNER_PLATFORM" >> "$GITHUB_OUTPUT"
+      - name: Resolve platform
+        id: platform
+        uses: actions/github-script@v7
+        with:
+          # https://github.com/actions/setup-java/blob/ae2b61dbc685e60e4427b2e8ed4f0135c6ea8597/src/cache.ts#L101
+          script: return `${process.env['RUNNER_OS']}-${process.arch}`;
+          result-encoding: string
   analyze:
     runs-on: ubuntu-latest
     name: Perform analysis
@@ -81,14 +88,15 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ~/.m2
-          key: sonar-${{ needs.prepare.outputs.runner_platform }}-maven-${{ hashFiles('**/pom.xml') }}
+          # share cache with workflows using setup-java action
+          key: setup-java-${{ needs.prepare.outputs.runner_platform }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: sonar-${{ needs.prepare.outputs.runner_platform }}-maven-
       - name: Restore Sonar cache
         id: restore-sonar-cache
         uses: actions/cache/restore@v4
         with:
           path: ~/.sonar/cache
-          key: sonar-${{ needs.prepare.outputs.runner_platform }}-sonar-
+          key: sonar-${{ needs.prepare.outputs.runner_platform }}
       - name: Run Sonar analysis
         env:
           SONAR_ARGS: ${{ needs.prepare.outputs.sonar_args }}
