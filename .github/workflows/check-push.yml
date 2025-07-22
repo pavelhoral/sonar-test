@@ -15,6 +15,5 @@ jobs:
     name: Sonar analysis
     if: github.ref_name == 'main'
     uses: ./.github/workflows/sonar-maven.yml
-    with:
-      save_cache: true
-    secrets: inherit
+    secrets:
+      sonar_token: ${{ secrets.SONAR_TOKEN }}
