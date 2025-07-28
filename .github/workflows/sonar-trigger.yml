@@ -3,7 +3,7 @@ name: Trigger Sonar analysis
 on:
   workflow_run:
     workflows:
-      - Check pull
+      - Build project
     types:
       - completed
 
@@ -11,11 +11,19 @@ permissions:
   contents: read
 
 jobs:
-  trigger:
+  prepare:
     if: github.event.workflow_run.conclusion == 'success'
-    name: Trigger Sonar analysis
-    uses: ./.github/workflows/sonar-pull-maven.yml
+    uses: ./.github/workflows/sonar-prepare.yml
+    name: Prepare analysis context
     with:
       workflow_run: ${{ toJSON(github.event.workflow_run) }}
+  trigger:
+    needs: prepare
+    if: needs.prepare.outputs.sonar_allowed
+    name: Trigger Sonar analysis
+    uses: ./.github/workflows/sonar-maven.yml
+    with:
+      java_version: 21
+      pull_request: ${{ needs.prepare.outputs.pull_request }}
     secrets:
       sonar_token: ${{ secrets.SONAR_TOKEN }}

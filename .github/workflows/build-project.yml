@@ -1,7 +1,8 @@
 name: Build project
 
 on:
-  workflow_call:
+  push:
+  pull_request:
 
 permissions:
   contents: read
@@ -24,3 +25,10 @@ jobs:
           cache: "maven"
       - name: Verify build
         run: mvn verify
+  sonar:
+    needs: build
+    if: github.base_ref == 'main' && github.event_name == 'pull_request'
+    name: Prepare analysis context
+    uses: ./.github/workflows/sonar-pull-prepare.yml
+    with:
+      pull_request: ${{ toJSON(github.event.pull_request) }}
