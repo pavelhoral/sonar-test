@@ -1,0 +1,16 @@
+name: Check backport
+
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare parameters
+        run: |
+          echo "${{ toJSON(github.event.pull_request) }}"
