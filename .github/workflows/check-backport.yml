@@ -14,3 +14,5 @@ jobs:
       - name: Prepare parameters
         run: |
           echo "${{ toJSON(github.event.pull_request) }}"
+
+# TEST
